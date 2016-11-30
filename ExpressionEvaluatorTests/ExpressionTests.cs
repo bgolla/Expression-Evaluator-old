@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿using System;
+using System.Collections.Generic;
+using NUnit.Framework;
 using Vanderbilt.Biostatistics.Wfccm2;
 
 namespace ExpressionEvaluatorTests
@@ -9,19 +11,19 @@ namespace ExpressionEvaluatorTests
     [TestFixture]
     public class ExpressionTest
     {
-        private Expression _func;
-
         [SetUp]
         public void Init() { _func = new Expression(""); }
 
         [TearDown]
         public void Clear() { _func.Clear(); }
 
+        private Expression _func;
+
         [Test]
         public void Add_SimpleTest_ValueIsCorrect()
         {
             _func.Function = "1+2";
-            Assert.AreEqual(true, double.IsNaN(_func.GetVariableValue("a")));
+            Assert.Throws<KeyNotFoundException>(() => _func.GetVariableValue<double>("a"));
             Assert.AreEqual(3, _func.EvaluateNumeric());
         }
 
@@ -32,8 +34,8 @@ namespace ExpressionEvaluatorTests
             _func.AddSetVariable("a", 2);
             _func.AddSetVariable("b", 3);
             _func.ClearVariables();
-            Assert.AreEqual(true, double.IsNaN(_func.GetVariableValue("a")));
-            Assert.AreEqual(true, double.IsNaN(_func.GetVariableValue("b")));
+            Assert.Throws<KeyNotFoundException>(() => _func.GetVariableValue<double>("a"));
+            Assert.Throws<KeyNotFoundException>(() => _func.GetVariableValue<double>("b"));
         }
 
         [Test]
@@ -51,10 +53,24 @@ namespace ExpressionEvaluatorTests
         }
 
         [Test]
+        public void Evaulate_CheckFloatingPointErrors_IsCorrect()
+        {
+            _func.Function = "99.999999999999/100";
+            Assert.AreEqual(0.99999999999999, _func.EvaluateNumeric());
+        }
+
+        [Test]
         public void Evaulate_CheckFloatingPointErrors01_IsCorrect()
         {
             _func.Function = "0.3 / 0.4";
             Assert.AreEqual(0.75, _func.EvaluateNumeric());
+        }
+
+        [Test]
+        public void Evaulate_CheckFloatingPointErrorsWithBoolean_IsCorrect()
+        {
+            _func.Function = "0.3 >= 0.75 * 0.4";
+            Assert.AreEqual(true, _func.EvaluateBoolean());
         }
 
         [Test]
@@ -71,20 +87,6 @@ namespace ExpressionEvaluatorTests
             _func.AddSetVariable("a", 0.3);
             _func.AddSetVariable("b", 0.4);
             Assert.AreEqual(true, _func.EvaluateBoolean());
-        }
-
-        [Test]
-        public void Evaulate_CheckFloatingPointErrorsWithBoolean_IsCorrect()
-        {
-            _func.Function = "0.3 >= 0.75 * 0.4";
-            Assert.AreEqual(true, _func.EvaluateBoolean());
-        }
-
-        [Test]
-        public void Evaulate_CheckFloatingPointErrors_IsCorrect()
-        {
-            _func.Function = "99.999999999999/100";
-            Assert.AreEqual(0.99999999999999, _func.EvaluateNumeric());
         }
 
         [Test]
@@ -201,11 +203,24 @@ namespace ExpressionEvaluatorTests
         }
 
         [Test]
-        public void Variable002()
+        public void Variable_SetBool_IsCorrect()
         {
-            _func.Function = "a+b";
-            Assert.AreEqual(true, double.IsNaN(_func.GetVariableValue("a")));
-            Assert.AreEqual(true, double.IsNaN(_func.GetVariableValue("b")));
+            _func.AddSetVariable("a", false);
+            Assert.AreEqual(false, _func.GetVariableValue<bool>("a"));
+        }
+
+        [Test]
+        public void Variable_SetDateTime_IsCorrect()
+        {
+            _func.AddSetVariable("a", new DateTime(1111, 1, 1));
+            Assert.AreEqual(new DateTime(1111, 1, 1), _func.GetVariableValue<DateTime>("a"));
+        }
+
+        [Test]
+        public void Variable_SetString_IsCorrect()
+        {
+            _func.AddSetVariable("a", "test");
+            Assert.AreEqual("test", _func.GetVariableValue<string>("a"));
         }
 
         [Test]
@@ -214,13 +229,28 @@ namespace ExpressionEvaluatorTests
             _func.Function = "a+b";
             _func.AddSetVariable("a", 2);
             _func.AddSetVariable("b", 3);
-            Assert.AreEqual(2, _func.GetVariableValue("a"));
-            Assert.AreEqual(3, _func.GetVariableValue("b"));
+            Assert.AreEqual(2, _func.GetVariableValue<decimal>("a"));
+            Assert.AreEqual(3, _func.GetVariableValue<decimal>("b"));
 
             _func.AddSetVariable("a", 3);
             _func.AddSetVariable("b", 4);
-            Assert.AreEqual(3, _func.GetVariableValue("a"));
-            Assert.AreEqual(4, _func.GetVariableValue("b"));
+            Assert.AreEqual(3, _func.GetVariableValue<decimal>("a"));
+            Assert.AreEqual(4, _func.GetVariableValue<decimal>("b"));
+        }
+
+        [Test]
+        public void Variable_SetTimeStamp_IsCorrect()
+        {
+            _func.AddSetVariable("a", new TimeSpan(1));
+            Assert.AreEqual(new TimeSpan(1), _func.GetVariableValue<TimeSpan>("a"));
+        }
+
+        [Test]
+        public void Variable002()
+        {
+            _func.Function = "a+b";
+            Assert.Throws<InvalidCastException>(() => _func.GetVariableValue<double>("a"));
+            Assert.Throws<InvalidCastException>(() => _func.GetVariableValue<double>("b"));
         }
     }
 }
